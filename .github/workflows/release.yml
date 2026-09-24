@@ -1,0 +1,271 @@
+name: Release
+
+# Builds the gallery for every platform Avalonia supports from a single version number.
+#
+# Run it from the Actions tab ("Run workflow") and type the version, or push a tag such as
+# v1.4.0. Both paths funnel through the same `version` output so a manual run and a tagged
+# release produce byte-for-byte equivalent artifacts.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to stamp into the binaries, e.g. 1.4.0"
+        required: true
+        type: string
+      publish_release:
+        description: "Attach the artifacts to a GitHub Release"
+        required: false
+        type: boolean
+        default: false
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  DOTNET_NOLOGO: 1
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
+
+jobs:
+  # ---------------------------------------------------------------------------------------
+  # Resolve the version once so every downstream job agrees on it.
+  # ---------------------------------------------------------------------------------------
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - id: resolve
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            version="${{ inputs.version }}"
+          else
+            # refs/tags/v1.4.0 -> 1.4.0
+            version="${GITHUB_REF_NAME#v}"
+          fi
+
+          # Reject anything MSBuild would not accept, rather than failing later per-platform.
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?(-[0-9A-Za-z.-]+)?$'; then
+            echo "::error::'$version' is not a valid version (expected 1.2.3 or 1.2.3-beta.1)."
+            exit 1
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Building version $version"
+
+  # ---------------------------------------------------------------------------------------
+  # The test suite gates every artifact: no platform is published from code that fails.
+  # ---------------------------------------------------------------------------------------
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore AvaloniaGallery.sln
+
+      - name: Build
+        run: dotnet build AvaloniaGallery.sln -c Release --no-restore
+
+      - name: Test
+        run: dotnet test AvaloniaGallery.sln -c Release --no-build --verbosity normal
+
+  # ---------------------------------------------------------------------------------------
+  # Desktop: one self-contained binary per OS/architecture.
+  #
+  # Each RID is built on its matching OS. Avalonia's desktop backends pull in native
+  # libraries (SkiaSharp, ANGLE, the macOS AppKit shims), and publishing those from a
+  # foreign host is not something Avalonia supports for signing or notarization — the
+  # binary would build but the release could not be signed on a later step.
+  # ---------------------------------------------------------------------------------------
+  desktop:
+    needs: [version, test]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: win-x64
+            os: windows-latest
+            archive: zip
+          - rid: win-arm64
+            os: windows-latest
+            archive: zip
+          - rid: osx-x64
+            os: macos-latest
+            archive: tar
+          - rid: osx-arm64
+            os: macos-latest
+            archive: tar
+          - rid: linux-x64
+            os: ubuntu-latest
+            archive: tar
+          - rid: linux-arm64
+            os: ubuntu-latest
+            archive: tar
+
+    runs-on: ${{ matrix.os }}
+    name: desktop (${{ matrix.rid }})
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet publish src/AvaloniaGallery.Desktop/AvaloniaGallery.Desktop.csproj \
+            -c Release \
+            -r ${{ matrix.rid }} \
+            --self-contained true \
+            -p:Version=${{ needs.version.outputs.version }} \
+            -p:PublishSingleFile=true \
+            -p:IncludeNativeLibrariesForSelfExtract=true \
+            -p:DebugType=none \
+            -o "publish/${{ matrix.rid }}"
+
+      # A .app bundle is what macOS users expect; a bare binary will not carry an icon
+      # and cannot be launched from Finder.
+      - name: Wrap in a macOS app bundle
+        if: startsWith(matrix.rid, 'osx-')
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ needs.version.outputs.version }}"
+          app="publish/bundle/Avalonia Gallery.app"
+          mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
+
+          cp -R "publish/${{ matrix.rid }}/." "$app/Contents/MacOS/"
+
+          # Finder shows CFBundleIconFile, which has to be a real .icns - a PNG renamed
+          # to .icns is silently ignored and the bundle falls back to a blank page icon.
+          iconset="$(mktemp -d)/AppIcon.iconset"
+          mkdir -p "$iconset"
+          src="src/AvaloniaGallery.Shared/Assets/avalonia-logo.png"
+          for size in 16 32 64 128 256 512; do
+            sips -z $size $size "$src" --out "$iconset/icon_${size}x${size}.png" >/dev/null
+            sips -z $((size*2)) $((size*2)) "$src" --out "$iconset/icon_${size}x${size}@2x.png" >/dev/null
+          done
+          iconutil -c icns "$iconset" -o "$app/Contents/Resources/AppIcon.icns"
+
+          # The heredoc body must start at column zero: a plist with leading whitespace
+          # before the XML declaration is rejected outright, and the bundle will not launch.
+          cat > "$app/Contents/Info.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleName</key><string>Avalonia Gallery</string>
+            <key>CFBundleDisplayName</key><string>Avalonia Gallery</string>
+            <key>CFBundleIdentifier</key><string>net.avaloniaui.gallery</string>
+            <key>CFBundleVersion</key><string>${version}</string>
+            <key>CFBundleShortVersionString</key><string>${version}</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>CFBundleExecutable</key><string>AvaloniaGallery.Desktop</string>
+            <key>CFBundleIconFile</key><string>AppIcon</string>
+            <key>LSMinimumSystemVersion</key><string>11.0</string>
+            <key>NSHighResolutionCapable</key><true/>
+          </dict>
+          </plist>
+          PLIST
+
+          # Strip the YAML block indentation that the heredoc above preserved.
+          sed -i.bak -E 's/^ {10}//' "$app/Contents/Info.plist"
+          rm -f "$app/Contents/Info.plist.bak"
+
+          # Fail here rather than shipping a bundle macOS refuses to open.
+          plutil -lint "$app/Contents/Info.plist"
+
+          chmod +x "$app/Contents/MacOS/AvaloniaGallery.Desktop"
+          rm -rf "publish/${{ matrix.rid }}"
+          mkdir -p "publish/${{ matrix.rid }}"
+          mv "publish/bundle/Avalonia Gallery.app" "publish/${{ matrix.rid }}/"
+
+      - name: Archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          name="AvaloniaGallery-${{ needs.version.outputs.version }}-${{ matrix.rid }}"
+          mkdir -p dist
+
+          if [ "${{ matrix.archive }}" = "zip" ]; then
+            # -j would flatten the tree; the publish folder is already flat.
+            (cd "publish/${{ matrix.rid }}" && 7z a -tzip "../../dist/${name}.zip" .)
+          else
+            tar -czf "dist/${name}.tar.gz" -C "publish/${{ matrix.rid }}" .
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AvaloniaGallery-${{ matrix.rid }}
+          path: dist/*
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------------------
+  # Android and iOS are deliberately absent.
+  #
+  # The gallery ships a desktop head only. Adding another head is a project
+  # change (a .Android/.iOS csproj plus signing material), not a workflow change, so this
+  # job fails loudly if someone adds those projects without extending the matrix, rather
+  # than letting a release silently omit them.
+  # ---------------------------------------------------------------------------------------
+  guard-platform-coverage:
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Every application head must be covered by this workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=0
+
+          for project in src/*/; do
+            name="$(basename "$project")"
+            case "$name" in
+              AvaloniaGallery.Shared|AvaloniaGallery.Desktop) ;;
+              *)
+                echo "::error::$name has no job in release.yml; add it to the matrix."
+                missing=1
+                ;;
+            esac
+          done
+
+          exit "$missing"
+
+  # ---------------------------------------------------------------------------------------
+  # Collect every artifact into one release.
+  # ---------------------------------------------------------------------------------------
+  release:
+    needs: [version, desktop]
+    if: github.event_name == 'push' || inputs.publish_release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List what will be published
+        run: ls -lR artifacts
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.version.outputs.version }}
+          name: Avalonia Gallery ${{ needs.version.outputs.version }}
+          files: artifacts/**/*
+          generate_release_notes: true
