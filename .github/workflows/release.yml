@@ -67,9 +67,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Install the newest 10.0 SDK rather than pointing setup-dotnet at global.json:
+      # it installs the literal version found there and ignores rollForward, which turns
+      # the floor in global.json into an exact pin and fails the moment that exact build
+      # is not published. global.json still enforces the .NET 10 minimum for the build.
       - uses: actions/setup-dotnet@v4
         with:
-          global-json-file: global.json
+          dotnet-version: '10.0.x'
 
       - name: Restore
         run: dotnet restore AvaloniaGallery.sln
@@ -119,9 +123,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Install the newest 10.0 SDK rather than pointing setup-dotnet at global.json:
+      # it installs the literal version found there and ignores rollForward, which turns
+      # the floor in global.json into an exact pin and fails the moment that exact build
+      # is not published. global.json still enforces the .NET 10 minimum for the build.
       - uses: actions/setup-dotnet@v4
         with:
-          global-json-file: global.json
+          dotnet-version: '10.0.x'
 
       - name: Publish
         shell: bash
