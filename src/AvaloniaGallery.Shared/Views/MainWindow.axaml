@@ -1,0 +1,25 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="using:AvaloniaGallery.Views"
+        xmlns:loc="using:AvaloniaGallery.Localization"
+        x:Class="AvaloniaGallery.Views.MainWindow"
+        Title="{loc:Loc App.Title}"
+        Width="1280" Height="820"
+        MinWidth="720" MinHeight="520"
+        WindowStartupLocation="CenterScreen"
+        Icon="/Assets/avalonia-logo.png">
+
+  <!-- Same reasoning as MainView: a style, so the "backdrop" class can clear the window
+       background for a material and restore the themed brush when it is switched off. -->
+  <Window.Styles>
+    <Style Selector="Window">
+      <Setter Property="Background" Value="{DynamicResource GalleryPageBackgroundBrush}" />
+    </Style>
+    <Style Selector="Window.backdrop">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+  </Window.Styles>
+
+  <!-- The desktop head is just a window around the shared view. -->
+  <views:MainView x:Name="Root" />
+</Window>

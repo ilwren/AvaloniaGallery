@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- A library, not an executable: every platform head references this and supplies
+         its own entry point. netstandard2.0 would also work, but net10.0 lets the shared
+         code use modern language and BCL features. -->
+    <OutputType>Library</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
+    <RootNamespace>AvaloniaGallery</RootNamespace>
+    <AssemblyName>AvaloniaGallery</AssemblyName>
+
+    <!-- Generates the strongly typed x:Name fields used by MainView's code behind. -->
+    <IncludeAvaloniaGenerators>true</IncludeAvaloniaGenerators>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\**" />
+
+    <!-- The SDK auto-includes *.axaml only. SampleCard.xaml is a plain ResourceDictionary
+         merged from App.axaml, so it has to be listed explicitly. -->
+    <AvaloniaXaml Include="Controls\SampleCard.xaml" />
+
+    <!-- The page sources are embedded so the "Page source" viewer can show the exact code
+         that produced the page the user is looking at, without needing the source tree
+         to be present next to the binary. -->
+    <EmbeddedResource Include="Samples\*.cs" LogicalName="src/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The test project drives navigation directly, which is internal API. -->
+    <InternalsVisibleTo Include="AvaloniaGallery.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.Themes.Simple" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.Controls.ColorPicker" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.Controls.DataGrid" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="$(AvaloniaVersion)" />
+
+    <!-- Parses each sample's XAML at runtime so the displayed source and the
+         rendered control are guaranteed to be the exact same markup. -->
+    <PackageReference Include="Avalonia.Markup.Xaml.Loader" Version="$(AvaloniaVersion)" />
+
+    <!-- Note: Avalonia.Diagnostics (the FOSS DevTools) stops at 11.3 — in 12.x the new
+         DevTools moved to the commercial Accelerate product, so there is no 12.x package. -->
+  </ItemGroup>
+
+</Project>

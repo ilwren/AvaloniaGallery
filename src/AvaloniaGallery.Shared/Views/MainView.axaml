@@ -1,0 +1,134 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:AvaloniaGallery.Localization"
+             xmlns:views="using:AvaloniaGallery.Views"
+             x:Class="AvaloniaGallery.Views.MainView">
+
+  <!--
+    The chrome backgrounds live in styles rather than as local attributes on purpose.
+    A window material (Mica, Acrylic, blur) is painted *behind* the window content, so it
+    is invisible unless the content stops painting over it. Toggling the "backdrop" class
+    switches the whole shell to transparent and back, and because these are styles the
+    DynamicResource links survive the round trip - a local value assigned from code would
+    replace the resource binding and break light/dark switching afterwards.
+  -->
+  <UserControl.Styles>
+    <Style Selector="views|MainView">
+      <Setter Property="Background" Value="{DynamicResource GalleryPageBackgroundBrush}" />
+    </Style>
+    <Style Selector="Border#TitleStrip">
+      <Setter Property="Background" Value="{DynamicResource GalleryNavBackgroundBrush}" />
+    </Style>
+    <Style Selector="Border#NavPane">
+      <Setter Property="Background" Value="{DynamicResource GalleryNavBackgroundBrush}" />
+    </Style>
+
+    <Style Selector="views|MainView.backdrop">
+      <Setter Property="Background" Value="{DynamicResource GalleryPageBackdropBrush}" />
+    </Style>
+    <Style Selector="views|MainView.backdrop Border#TitleStrip">
+      <Setter Property="Background" Value="{DynamicResource GalleryNavBackdropBrush}" />
+    </Style>
+    <Style Selector="views|MainView.backdrop Border#NavPane">
+      <Setter Property="Background" Value="{DynamicResource GalleryNavBackdropBrush}" />
+    </Style>
+  </UserControl.Styles>
+
+  <DockPanel>
+
+    <!-- Title strip -->
+    <Border x:Name="TitleStrip"
+            DockPanel.Dock="Top"
+            BorderBrush="{DynamicResource GalleryCardBorderBrush}"
+            BorderThickness="0,0,0,1"
+            Padding="16,10">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+          <Border Width="26" Height="26" CornerRadius="5"
+                  Background="{DynamicResource SystemAccentColor}">
+            <TextBlock Text="A" Foreground="White" FontWeight="Bold" FontSize="15"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <TextBlock Text="{loc:Loc App.Title}" FontSize="15" FontWeight="SemiBold"
+                     VerticalAlignment="Center" />
+          <Border Classes="metaChip">
+            <TextBlock x:Name="VersionChip" Text="12.1.2" />
+          </Border>
+        </StackPanel>
+
+        <!-- Search -->
+        <AutoCompleteBox x:Name="SearchBox"
+                         Grid.Column="1"
+                         Width="380"
+                         HorizontalAlignment="Center"
+                         PlaceholderText="{loc:Loc App.Search}"
+                         MinimumPrefixLength="1"
+                         SelectionChanged="OnSearchSelectionChanged" />
+
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
+          <Button x:Name="HomeButton"
+                  Click="OnHomeClick"
+                  Padding="9,6"
+                  Background="Transparent"
+                  BorderThickness="0"
+                  ToolTip.Tip="{loc:Loc App.Home}">
+            <PathIcon Data="{StaticResource IconHome}" Width="15" Height="15" />
+          </Button>
+
+          <Button x:Name="LanguageButton"
+                  Padding="9,6"
+                  Background="Transparent"
+                  BorderThickness="0"
+                  ToolTip.Tip="{loc:Loc App.Language}">
+            <PathIcon Data="{StaticResource IconLanguage}" Width="15" Height="15" />
+            <Button.Flyout>
+              <MenuFlyout />
+            </Button.Flyout>
+          </Button>
+
+          <Button x:Name="ThemeButton"
+                  Click="OnThemeClick"
+                  Padding="9,6"
+                  Background="Transparent"
+                  BorderThickness="0"
+                  ToolTip.Tip="{loc:Loc App.Theme}">
+            <PathIcon Data="{StaticResource IconTheme}" Width="15" Height="15" />
+          </Button>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- Nav pane + content -->
+    <Grid ColumnDefinitions="260,Auto,*">
+
+      <Border x:Name="NavPane" Grid.Column="0">
+        <ScrollViewer>
+          <!--
+            A ListBox rather than a stack of Buttons: selection state is what makes the
+            current page obvious, and it also brings keyboard navigation for free.
+            Categories are non-selectable headers injected into the same list so that the
+            selection model spans the whole tree.
+          -->
+          <ListBox x:Name="NavList"
+                   Margin="8,10"
+                   Background="Transparent"
+                   BorderThickness="0"
+                   SelectionMode="Single"
+                   SelectionChanged="OnNavSelectionChanged" />
+        </ScrollViewer>
+      </Border>
+
+      <GridSplitter Grid.Column="1" Width="1"
+                    Background="{DynamicResource GalleryCardBorderBrush}"
+                    ResizeDirection="Columns" />
+
+      <!-- Detail host -->
+      <TransitioningContentControl Grid.Column="2" x:Name="DetailHost">
+        <TransitioningContentControl.PageTransition>
+          <CrossFade Duration="0:0:0.18" />
+        </TransitioningContentControl.PageTransition>
+      </TransitioningContentControl>
+    </Grid>
+  </DockPanel>
+</UserControl>

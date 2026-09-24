@@ -1,0 +1,7 @@
+{
+  "$schema": "https://xunit.net/schema/current/xunit.runner.schema.json",
+
+  "//": "Loc.Language is process-wide static state. The localization tests switch it and switch it back, while the navigation and sample-integrity tests render UI that reads it through {loc:Loc} bindings. Run in parallel, those two groups race: a render test can sample the tree while the language is briefly zh-Hans and assert against the wrong string. The failure is timing dependent, so it shows up as an occasional red run rather than a reproducible one. Serializing the assembly costs about a second and removes the whole class of flake.",
+  "parallelizeAssembly": false,
+  "parallelizeTestCollections": false
+}

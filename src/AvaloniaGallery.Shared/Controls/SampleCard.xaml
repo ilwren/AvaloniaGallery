@@ -1,0 +1,123 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:gc="using:AvaloniaGallery.Controls"
+                    xmlns:loc="using:AvaloniaGallery.Localization">
+
+  <!--
+    The WinUI 3 Gallery sample card: a titled container with a light preview surface on top
+    and a collapsible, syntax highlighted source pane underneath.
+  -->
+  <ControlTheme x:Key="{x:Type gc:SampleCard}" TargetType="gc:SampleCard">
+    <Setter Property="Margin" Value="0,0,0,24" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <StackPanel Spacing="8">
+
+          <!-- Heading -->
+          <StackPanel Spacing="2" IsVisible="{TemplateBinding Header, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+            <TextBlock Text="{TemplateBinding Header}"
+                       FontSize="16"
+                       FontWeight="SemiBold"
+                       TextWrapping="Wrap" />
+            <TextBlock Text="{TemplateBinding Description}"
+                       Opacity="0.75"
+                       FontSize="13"
+                       TextWrapping="Wrap"
+                       IsVisible="{TemplateBinding Description, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+          </StackPanel>
+
+          <!-- Card body -->
+          <Border BorderBrush="{DynamicResource GalleryCardBorderBrush}"
+                  BorderThickness="1"
+                  CornerRadius="8"
+                  ClipToBounds="True"
+                  Background="{DynamicResource GalleryCardBackgroundBrush}">
+            <DockPanel>
+
+              <!-- Command strip -->
+              <Border DockPanel.Dock="Bottom"
+                      Background="{DynamicResource GalleryCardFooterBrush}"
+                      BorderBrush="{DynamicResource GalleryCardBorderBrush}"
+                      BorderThickness="0,1,0,0"
+                      Padding="8,6">
+                <DockPanel>
+                  <ToggleButton x:Name="PART_SourceToggle"
+                                DockPanel.Dock="Left"
+                                Padding="10,4"
+                                FontSize="12"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                ToolTip.Tip="{loc:Loc Page.SourceTip}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <PathIcon Data="{StaticResource IconCode}" Width="13" Height="13" />
+                      <TextBlock Text="{loc:Loc Page.Source}" VerticalAlignment="Center" />
+                    </StackPanel>
+                  </ToggleButton>
+
+                  <Button x:Name="PART_CopyButton"
+                          DockPanel.Dock="Right"
+                          HorizontalAlignment="Right"
+                          Padding="10,4"
+                          FontSize="12"
+                          Background="Transparent"
+                          BorderThickness="0"
+                          ToolTip.Tip="{loc:Loc Page.CopyTip}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <PathIcon Data="{StaticResource IconCopy}" Width="13" Height="13" />
+                      <TextBlock x:Name="PART_CopyLabel" Text="{loc:Loc Page.Copy}" VerticalAlignment="Center" />
+                    </StackPanel>
+                  </Button>
+
+                  <Panel />
+                </DockPanel>
+              </Border>
+
+              <!-- Source pane -->
+              <Border x:Name="PART_SourcePane"
+                      DockPanel.Dock="Bottom"
+                      Background="{DynamicResource GalleryCodeBackgroundBrush}"
+                      BorderBrush="{DynamicResource GalleryCardBorderBrush}"
+                      BorderThickness="0,1,0,0"
+                      IsVisible="{Binding #PART_SourceToggle.IsChecked}">
+                <TabControl Padding="0" Margin="0">
+                  <TabItem Header="XAML" FontSize="12">
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                                  MaxHeight="420"
+                                  Padding="16,12">
+                      <gc:XamlPresenter Source="{TemplateBinding Xaml}"
+                                        Language="xaml"
+                                        FontFamily="{DynamicResource GalleryMonoFont}"
+                                        FontSize="12.5"
+                                        TextWrapping="NoWrap" />
+                    </ScrollViewer>
+                  </TabItem>
+                  <TabItem Header="C#"
+                           FontSize="12"
+                           IsVisible="{TemplateBinding CSharp, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                                  MaxHeight="420"
+                                  Padding="16,12">
+                      <gc:XamlPresenter Source="{TemplateBinding CSharp}"
+                                        Language="csharp"
+                                        FontFamily="{DynamicResource GalleryMonoFont}"
+                                        FontSize="12.5"
+                                        TextWrapping="NoWrap" />
+                    </ScrollViewer>
+                  </TabItem>
+                </TabControl>
+              </Border>
+
+              <!-- Live preview -->
+              <Border Padding="24" MinHeight="72">
+                <ContentPresenter Content="{TemplateBinding Content}"
+                                  HorizontalAlignment="Left"
+                                  VerticalAlignment="Center" />
+              </Border>
+            </DockPanel>
+          </Border>
+        </StackPanel>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+
+</ResourceDictionary>

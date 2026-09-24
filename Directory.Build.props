@@ -1,0 +1,25 @@
+<Project>
+
+  <PropertyGroup>
+    <!-- Single place to bump the Avalonia version for every project in the solution. -->
+    <AvaloniaVersion>12.1.2</AvaloniaVersion>
+
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+
+    <!-- The projects target net10.0, matching the SDK pinned in global.json. RollForward
+         is kept so the app still starts on a machine that only has a newer major runtime
+         installed; without it you get "You must install or update .NET ... version
+         '10.0.0'" at launch even though the build succeeded. -->
+    <RollForward>LatestMajor</RollForward>
+
+    <!-- The Avalonia analyzers ship against a newer Roslyn than some SDKs carry. -->
+    <NoWarn>$(NoWarn);CS9057</NoWarn>
+
+    <Authors>Avalonia Gallery</Authors>
+    <Product>Avalonia Gallery</Product>
+  </PropertyGroup>
+
+</Project>
